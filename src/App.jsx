@@ -20,6 +20,60 @@ const DEFAULT_CLUSTERS=[
   {nome:"Digital",       desc:"Jovem, alta frequência no app, renda menor mas crescente. Engajamento digital elevado."},
 ];
 
+// ── DEMO DATA ────────────────────────────────────────────────
+const DEMO_ROWS = Array.from({length:40}, (_,i) => {
+  const perfis = ["Conservador","Moderado","Arrojado","Agressivo"];
+  const cidades = ["São Paulo","Rio de Janeiro","Belo Horizonte","Curitiba","Porto Alegre","Brasília"];
+  const nomes = ["Ana Silva","Carlos Souza","Maria Santos","João Oliveira","Fernanda Lima","Ricardo Alves","Beatriz Costa","Paulo Ferreira","Camila Rocha","Diego Martins","Larissa Cardoso","Rafael Mendes","Juliana Neves","Bruno Castro","Tatiana Pires","Marcos Vieira","Priscila Gomes","Leonardo Reis","Amanda Faria","Gabriel Lopes","Natalia Cunha","Felipe Barros","Renata Queiroz","Thiago Carvalho","Isabela Ramos","Guilherme Dias","Patricia Moura","Anderson Sousa","Daniela Borges","Rodrigo Lima","Sabrina Teixeira","Vinícius Melo","Caroline Freitas","Eduardo Ribeiro","Aline Pereira","Gustavo Correia","Mônica Araújo","Leandro Xavier","Cristiane Pinto","Matheus Nunes"];
+  const isYoung = i%4===0;
+  const isPremium = i%4===1;
+  const isInvestor = i%4===2;
+  const isDigital = i%4===3;
+  return {
+    nome: nomes[i%nomes.length],
+    idade: isYoung?25+Math.floor(Math.random()*8):isPremium?45+Math.floor(Math.random()*15):isInvestor?38+Math.floor(Math.random()*12):22+Math.floor(Math.random()*10),
+    genero: i%2===0?"Feminino":"Masculino",
+    cidade: cidades[i%cidades.length],
+    renda_mensal: isYoung?8000+Math.floor(Math.random()*7000):isPremium?25000+Math.floor(Math.random()*30000):isInvestor?18000+Math.floor(Math.random()*15000):5000+Math.floor(Math.random()*4000),
+    saldo_medio: isYoung?15000+Math.floor(Math.random()*20000):isPremium?150000+Math.floor(Math.random()*200000):isInvestor?80000+Math.floor(Math.random()*100000):3000+Math.floor(Math.random()*8000),
+    valor_investido: isYoung?5000+Math.floor(Math.random()*15000):isPremium?200000+Math.floor(Math.random()*300000):isInvestor?100000+Math.floor(Math.random()*150000):0+Math.floor(Math.random()*3000),
+    perfil_risco: isPremium?"Agressivo":isInvestor?"Moderado":isYoung?"Moderado":"Conservador",
+    tempo_relacionamento: isYoung?1+Math.floor(Math.random()*4):isPremium?8+Math.floor(Math.random()*12):isInvestor?5+Math.floor(Math.random()*8):1+Math.floor(Math.random()*3),
+    produtos_contratados: isPremium?6+Math.floor(Math.random()*4):isInvestor?4+Math.floor(Math.random()*3):isYoung?2+Math.floor(Math.random()*3):1+Math.floor(Math.random()*2),
+    transacoes_mes: isDigital?80+Math.floor(Math.random()*60):isPremium?40+Math.floor(Math.random()*40):isYoung?50+Math.floor(Math.random()*50):20+Math.floor(Math.random()*30),
+    uso_app: isDigital?60+Math.floor(Math.random()*40):isYoung?40+Math.floor(Math.random()*30):isPremium?20+Math.floor(Math.random()*30):10+Math.floor(Math.random()*20),
+    score_engajamento: isPremium?75+Math.floor(Math.random()*25):isDigital?70+Math.floor(Math.random()*30):isInvestor?50+Math.floor(Math.random()*30):20+Math.floor(Math.random()*30),
+    respondeu_campanha_anterior: i%3===0?"Sim":"Não",
+  };
+});
+
+function buildDemoState() {
+  const NUM_COLS=["idade","renda_mensal","saldo_medio","valor_investido","tempo_relacionamento","produtos_contratados","transacoes_mes","uso_app","score_engajamento"];
+  const avail=NUM_COLS.filter(c=>DEMO_ROWS[0][c]!==undefined);
+  const norm=normalize(DEMO_ROWS,avail);
+  const{labels}=kMeans(norm,4);
+  const grouped=Array.from({length:4},(_,ci)=>({id:ci,clients:DEMO_ROWS.filter((_,i)=>labels[i]===ci)}));
+  return{labels,grouped,cols:avail};
+}
+
+const DEMO_PROFILES = [
+  {cluster:1,nome:"Conservador",descricao:"Clientes de baixo risco com renda estável. Preferem produtos seguros como CDB e poupança. Baixo engajamento digital mas alta fidelidade.",tom:"formal",mensagem:"Olá! Temos uma novidade especial em produtos de renda fixa com rentabilidade acima do CDI. Que tal uma conversa para conhecer as opções ideais para o seu perfil?"},
+  {cluster:2,nome:"Investidor",descricao:"Alta renda com tolerância moderada a risco. Investe em fundos e ações. Busca rentabilidade e diversificação de portfólio.",tom:"técnico",mensagem:"Boa tarde! Identificamos oportunidades em fundos multimercado alinhados ao seu perfil de investidor. Posso compartilhar uma análise personalizada?"},
+  {cluster:3,nome:"Premium",descricao:"Alto patrimônio e muito engajado. Usa múltiplos produtos e é cliente estratégico de alto valor. Merece atendimento exclusivo.",tom:"formal",mensagem:"Prezado cliente, como parte do nosso programa Premium, temos acesso antecipado a uma nova linha de investimentos exclusivos. Gostaria de apresentar as condições especiais?"},
+  {cluster:4,nome:"Digital",descricao:"Jovem com alta frequência no app e renda crescente. Perfil digital nativo com alto potencial de crescimento.",tom:"informal",mensagem:"Ei! Vi que você é um super usuário do nosso app. Temos uma oferta especial de cashback para você aproveitar essa semana. Bora ver?"},
+];
+
+const DEMO_MESSAGES = DEMO_PROFILES.flatMap(p => {
+  const g_clients = DEMO_ROWS.filter((_,i) => i%4 === p.cluster-1).slice(0,3);
+  return g_clients.map(client => ({
+    cluster:p.cluster, nome:client.nome, cidade:client.cidade,
+    mensagem:p.mensagem.replace(/(cliente|Prezado cliente)/gi, client.nome.split(" ")[0]),
+    tom:p.tom, perfil:p.nome,
+  }));
+});
+
+
+
 const GOOGLE=`@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Poppins:wght@400;500;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 ::-webkit-scrollbar{width:4px;}
@@ -211,13 +265,13 @@ export default function App(){
   const isMobile=useIsMobile();
   const[onboarding,setOnboarding]=useState(true);
   const[sidebarOpen,setSidebarOpen]=useState(false);
-  const[tab,setTab]=useState("importar");
-  const[rows,setRows]=useState([]);
-  const[fileName,setFileName]=useState("");
+  const[tab,setTab]=useState("dashboard");
+  const[rows,setRows]=useState(DEMO_ROWS);
+  const[fileName,setFileName]=useState("demo_clientes_40.csv");
   const[k,setK]=useState(4);
-  const[clusters,setClusters]=useState(null);
-  const[profiles,setProfiles]=useState([]);
-  const[messages,setMessages]=useState([]);
+  const[clusters,setClusters]=useState(()=>buildDemoState());
+  const[profiles,setProfiles]=useState(DEMO_PROFILES);
+  const[messages,setMessages]=useState(DEMO_MESSAGES);
   const[apiKey,setApiKey]=useState("");
   const[showKey,setShowKey]=useState(false);
   const[loading,setLoading]=useState(false);
@@ -228,6 +282,7 @@ export default function App(){
   const[clusterDefs,setClusterDefs]=useState(DEFAULT_CLUSTERS.map(c=>({...c})));
 
   const aiReady=messages.length>0;
+  const isDemo=fileName==="demo_clientes_40.csv";
   const NUM_COLS=["idade","renda_mensal","saldo_medio","valor_investido","tempo_relacionamento","produtos_contratados","transacoes_mes","uso_app","score_engajamento"];
 
   const processFile=file=>{
@@ -621,6 +676,11 @@ export default function App(){
       <div style={{display:"flex",flex:1,overflow:"hidden",height:isMobile?"calc(100vh - 54px)":"100vh"}}>
         <Sidebar tab={tab} onChange={setTab} isMobile={isMobile} open={sidebarOpen} onClose={()=>setSidebarOpen(false)} aiReady={aiReady}/>
         <main style={{flex:1,overflowY:"auto",background:D.bg}}>
+          {isDemo&&<div style={{background:`${D.orange}18`,borderBottom:`1px solid ${D.orange}40`,padding:"8px 20px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+            <span style={{fontFamily:TITLE,fontWeight:700,fontSize:11,color:D.orange,textTransform:"uppercase",letterSpacing:".08em"}}>MODO DEMO</span>
+            <span style={{fontFamily:BODY,fontSize:11,color:D.textSub}}>Você está vendo dados fictícios de 40 clientes. Importe seu próprio CSV para começar.</span>
+            <button onClick={()=>{setRows([]);setFileName("");setClusters(null);setProfiles([]);setMessages([]);setTab("importar");}} style={{marginLeft:"auto",background:"transparent",border:`1px solid ${D.orange}60`,borderRadius:8,padding:"4px 12px",color:D.orange,cursor:"pointer",fontFamily:TITLE,fontWeight:700,fontSize:10,textTransform:"uppercase"}}>USAR MEUS DADOS</button>
+          </div>}
           {tab==="importar"  &&<PageImportar/>}
           {tab==="dashboard" &&<PageDashboard/>}
           {tab==="clientes"  &&<PageClientes/>}
